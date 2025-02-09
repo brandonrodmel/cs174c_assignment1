@@ -5,34 +5,42 @@ const { vec3, vec4, color, Mat4, Shape, Material, Shader, Texture, Component } =
 
 // TODO: you should implement the required classes here or in another file.
 
-class Hermite_Splines {
+class HermiteSpline {
 
-  constructor(points, tangents) { // TODO: ADD EXCEPTIONS
-    if(points.length != tangents.length)
-      throw new Error("# of points must be equal to number of tangents");
-    if(points.length < 2 || points.length > 20)
-      throw new Error("Can only support between 2 and 20 points")
-    this.points = points;
-    this.tangents = tangents;
+  constructor() {
+    this.points = []
+    this.tangents = [];
+    this.t = [];
   }
 
-  // TODO: ADD FUNCTION IMPLEMENTATION
-  add(x, y, z, sx, sy, sz) {
-    let point = {x, y, z};
+  get_position(index) { return this.points[index]; }
 
+  get_tangent(index) { return this.tangents[index]; }
+
+  get_t(index) { return this.t[index]; }
+
+  get_point(index) { return "pos: " + this.get_position(index) + " | tan: " + this.get_tangent(index) + " | t: " + this.get_t(index); }
+
+  // add point
+  add_point(x, y, z, sx, sy, sz) {
+      if(this.points.length < 20) {
+          this.points.push([x, y, z]);
+          this.tangents.push([sx, sy, sz]);
+          this.t.push(1);
+      }
   } 
 
-  // TODO: SET TANGENT FUNCTION IMPLEMENTATION
+  // modify tangent
   set_tangent(index, x, y, z) {
-
+      this.tangents[index] = [x, y, z];
   }
 
-  // TODO: SET POINT FUNCTION IMPLEMENTATION
-  set_point(index, x, y, z) {
-
+  // modify position of point
+  set_point(index, x, y, z) { 
+      this.points[index] = [x, y, z];
   }
 
-  // TODO: GET ARC LENGTH FUNCTION IMPLEMENTATION
+  // return arc length
   get_arc_length() {
     return 0;
   }
@@ -77,7 +85,9 @@ const Part_one_hermite_base = defs.Part_one_hermite_base =
         this.ball_radius = 0.25;
 
         // TODO: you should create a Spline class instance
+        let h_spline = new HermiteSpline();
       }
+
 
       render_animation( caller )
       {                                                // display():  Called once per frame of animation.  We'll isolate out
@@ -207,8 +217,48 @@ export class Part_one_hermite extends Part_one_hermite_base
   }
 
   parse_commands() {
-    document.getElementById("output").value = "parse_commands";
-    //TODO
+    let h_spline = new HermiteSpline();
+
+    // split input by lines
+    let commands = document.getElementById("input").value.split("\n"); 
+    
+    // remove extra spaces
+    commands = commands.map(c => c.replace(/\s+/g, " ").trim());
+
+    // filter out syntax errors
+    // ex. ">add" or "add" are not valid commands. "> add" would be the appropriate formatting
+    commands = commands.filter(c => (c[0] == ">" && c[1] == " "));
+
+    // filter out non-existant commands
+    // will only keep: add point, set point/tangent, get_arc_length
+    commands = commands.filter(str=> ((str.split(/\s+/)[1] == "add" && str.split(/\s+/)[2] == "point") || 
+                                      (str.split(/\s+/)[1] == "set" && (str.split(/\s+/)[2] == "point" || str.split(/\s+/)[2] == "tangent")) || 
+                                      str.split(/\s+/)[1] == "get_arc_length"));
+
+    // remove ">" for simplicity
+    commands = commands.map(c => c.replace(">", "").trim());
+
+    for(let c of commands) {
+      let str = c.split(/\s+/);
+      switch(str[0]) {
+        case "add":
+            h_spline.add_point(str[2], str[3], str[4], str[5], str[6], str[7]);
+          break;
+        case "set":
+          if(str[1] == "tangent")
+            h_spline.set_tangent(str[2], str[3], str[4], str[5]);
+          else if(str[1] == "point")
+            h_spline.set_point(str[2], str[3], str[4], str[5]);
+          break;
+        case "get_arc_length":
+          document.getElementById("output").value = h_spline.get_arc_length();
+          break;
+        default:
+      }
+    }
+
+    console.log(commands);
+    console.log(h_spline);
   }
 
   update_scene() { // callback for Draw button
@@ -217,12 +267,41 @@ export class Part_one_hermite extends Part_one_hermite_base
   }
 
   load_spline() {
-    document.getElementById("output").value = "load_spline";
-    //TODO
+    let h_spline = new HermiteSpline();
+
+    // split input by lines
+    let commands = document.getElementById("input").value.split("\n");
+
+    // remove extra spaces
+    commands = commands.map(c => c.replace(/\s+/g, " ").trim());
+
+    // filter out syntax errors
+    // commands must start with "<#" or end with "#>", not "< " or " >"
+    commands = commands.filter(c => ((c[0] == "<" && c[1] != " ") && (c[c.length-1] == ">" && c[c.length-2] != " ")));
+
+    // remove "<" and ">" for simplicity
+    commands = commands.map(c => c.replace(">", "").replace("<", "").trim());
+
+    // only keep n elements
+    // create spline with those elements
+    if(/^-?\d+$/.test(commands[0])) {
+      let n = parseInt(commands[0]);
+      commands.splice(n + 1);
+      for(let i = 1; i < n + 1; i++) {
+        let str = commands[i].split(/\s+/);
+        h_spline.add_point(str[0], str[1], str[2], str[3], str[4], str[5]);
+      }
+    }
+    else
+      commands = [];
+  
+    console.log(commands);
+    console.log(h_spline);
   }
 
   export_spline() {
-    document.getElementById("output").value = "export_spline";
+    let input = document.getElementById("input").value
+    document.getElementById("output").value = input;
     //TODO
   }
 }
