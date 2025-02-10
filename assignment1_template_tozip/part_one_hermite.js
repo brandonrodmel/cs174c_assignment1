@@ -12,6 +12,14 @@ class HermiteSpline {
     this.tangents = [];
     this.t = [];
     this.size = 0;
+
+    this.H = [
+      [ 2, -2,  1,  1],
+      [-3,  3, -2, -1],
+      [ 0,  0,  1,  0],
+      [ 1,  0,  0,  0]
+    ];
+
   }
 
   get_position(index) { return this.points[index]; }
@@ -269,7 +277,6 @@ export class Part_one_hermite extends Part_one_hermite_base
      */
   }
 
-  // add point 1 2 3 4 5 6
   parse_commands() {
     let h_spline = this.spline;
 
@@ -300,15 +307,8 @@ export class Part_one_hermite extends Part_one_hermite_base
           sy = parseInt(str[6]);
           sz = parseInt(str[7]);
           h_spline.add_point(x, y, z, sx, sy, sz);
-          let PI = Math.PI;
-          this.curve_fn =
-            (t) => vec3(
-                x * t,
-                y * t,
-                z * t,
-            );
-          this.curve = new Curve_Shape(this.curve_fn, 100);
-          break;
+          this.update_scene();
+        break;
         case "set":
           if(str[1] == "tangent") {
             index = parseInt(str[2]);
@@ -323,11 +323,11 @@ export class Part_one_hermite extends Part_one_hermite_base
             z = parseInt(str[5]);
             h_spline.set_point(index, x, y, z);
           }
-
-          break;
+          this.update_scene();
+        break;
         case "get_arc_length":
           document.getElementById("output").value = h_spline.get_arc_length();
-          break;
+        break;
         default:
       }
     }
@@ -337,13 +337,32 @@ export class Part_one_hermite extends Part_one_hermite_base
   }
 
   update_scene() { // callback for Draw button
-    document.getElementById("output").value = "update_scene";
-    const curve_fn = (t) => this.h_spline.get_position(t);
-    this.curve = Curve_Shape(curve_fn, this.sample_cnt);
+    let h_spline = this.spline;
+    let n = parseInt(h_spline.get_size());
+
+    for(let i = 0; i < n-1; i++) {
+      let p1 = h_spline.get_position(i);
+      let x1 = parseInt(p1[0]), y1 = parseInt(p1[1]), z1 = parseInt(p1[2]);
+      let sx1 = parseInt(p1[3]), sy1 = parseInt(p1[4]), sz1 = parseInt(p1[5]);
+
+      let p2 = h_spline.get_position(i+1);
+      let x2 = parseInt(p2[0]), y2 = parseInt(p2[1]), z2 = parseInt(p2[2]);
+      let sx2 = parseInt(p1[3]), sy2 = parseInt(p1[4]), sz2 = parseInt(p1[5]);
+
+      this.curve_fn =
+      (t) => vec3(
+          x1 + t * (x2 - x1),
+          y1 + t * (y2 - y1),
+          z1 + t * (z2 - z1),
+      );
+      this.curve = new Curve_Shape(this.curve_fn, 100);
+      // this.curves.push(this.curve);
+    }
   }
 
   load_spline() {
-    let h_spline = this.spline;
+    this.export_spline();
+    let h_spline = new HermiteSpline();
 
     // split input by lines
     let commands = document.getElementById("input").value.split("\n");
@@ -379,6 +398,7 @@ export class Part_one_hermite extends Part_one_hermite_base
     let h_spline = this.spline;
     let n = parseInt(this.spline.get_size());
     let output = n + "\n";
+
     for(let i = 0; i < n; i++) {
       output += h_spline.points[i].join(" ") + " " + h_spline.tangents[i].join(" ") + "\n";
     }
