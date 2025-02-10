@@ -380,7 +380,7 @@ export class Part_one_hermite extends Part_one_hermite_base
     let n = parseInt(this.spline.get_size());
     let output = n + "\n";
     for(let i = 0; i < n; i++) {
-      output += h_spline.points[i].join(" ") + h_spline.tangents[i].join(" ") + "\n";
+      output += h_spline.points[i].join(" ") + " " + h_spline.tangents[i].join(" ") + "\n";
     }
     document.getElementById("output").value = output;
   }
