@@ -10,23 +10,32 @@ class HermiteSpline {
   constructor() {
     this.points = [];
     this.tangents = [];
-    this.t = [];
     this.size = 0;
-
-    this.H = [
-      [ 2, -2,  1,  1],
-      [-3,  3, -2, -1],
-      [ 0,  0,  1,  0],
-      [ 1,  0,  0,  0]
-    ];
-
+    this.arc_length = 0;
+    this.arc_length_table =[];
   }
 
-  get_position(index) { return this.points[index]; }
+  h00(t) { return (2*t**3 - 3*t**2 + 1); }
+  h10(t) { return (t**3 - 2*t**2 + t); }
+  h01(t) { return (-2*t**3 + 3*t**2); }
+  h11(t) { return (t**3 - t**2); }
+
+  get_position(t) {
+    if(this.size < 2)
+      return vec3(0, 0, 0);
+
+    let index = Math.floor(t * (this.size - 1));
+
+    const p0 = this.points[index];
+    const v0 = this.tangents[index];
+    const p1 = this.points[index];
+    const v1 = this.tangents[index];
+    
+    return p0.times(this.h00(index)).plus(v0.times(this.h10(index)));
+    // return p0.times(this.h00(index)).plus(v0.times(this.h10(index))).plus(p1.times(this.h01(index))).plus(v1.times(h11(index)));
+  }
 
   get_tangent(index) { return this.tangents[index]; }
-
-  get_t(index) { return this.t[index]; }
 
   get_point(index) { return "pos: " + this.get_position(index) + " | tan: " + this.get_tangent(index) + " | t: " + this.get_t(index); }
 
@@ -35,26 +44,17 @@ class HermiteSpline {
   // add point
   add_point(x, y, z, sx, sy, sz) {
     if(this.points.length < 20) {
-        this.points.push([x, y, z]);
-        this.tangents.push([sx, sy, sz]);
-
-        if(this.points.length == 1) // if this is the first point added, set t = 0
-          this.t.push(0);
-        else {
-          this.t.push(1);
-          // refactor t's when adding more points
-          for(let i = 1; i < this.points.length; i++)
-            this.t[i] = i / (this.points.length - 1);
-        }
+        this.points.push(vec3(x, y, z));
+        this.tangents.push(vec3(sx, sy, sz));
         this.size++;
     }
   } 
 
   // modify tangent
-  set_tangent(index, x, y, z) { this.tangents[index] = [x, y, z]; }
+  set_tangent(index, x, y, z) { this.tangents[index] = vec3(x, y, z); }
 
   // modify position of point
-  set_point(index, x, y, z) { this.points[index] = [x, y, z]; }
+  set_point(index, x, y, z) { this.points[index] = vec3(x, y, z); }
 
   // return arc length
   get_arc_length() { return 0; }
@@ -232,6 +232,7 @@ export class Part_one_hermite extends Part_one_hermite_base
     // TODO: you should draw spline here.
     this.curve.draw(caller, this.uniforms);
 
+
     // add some fluctuation
     if (this.curve_fn && this.sample_cnt === this.curve.sample_count) {
       this.curve.update(caller, this.uniforms,
@@ -337,27 +338,37 @@ export class Part_one_hermite extends Part_one_hermite_base
   }
 
   update_scene() { // callback for Draw button
-    let h_spline = this.spline;
+    let h_spline = this.spline
     let n = parseInt(h_spline.get_size());
 
-    for(let i = 0; i < n-1; i++) {
-      let p1 = h_spline.get_position(i);
-      let x1 = parseInt(p1[0]), y1 = parseInt(p1[1]), z1 = parseInt(p1[2]);
-      let sx1 = parseInt(p1[3]), sy1 = parseInt(p1[4]), sz1 = parseInt(p1[5]);
+    // let p0 = this.spline.get_point(0)
+    // this.curve_fn = 
+    //   (t) => vec3(
+    //     x * t,
+    //     y * t,
+    //     z * t,
+    //   );
+    
+    // this.sample_cnt = n;
 
-      let p2 = h_spline.get_position(i+1);
-      let x2 = parseInt(p2[0]), y2 = parseInt(p2[1]), z2 = parseInt(p2[2]);
-      let sx2 = parseInt(p1[3]), sy2 = parseInt(p1[4]), sz2 = parseInt(p1[5]);
+    // this.curve = new Curve_Shape(this.curve_fn, this.sample_cnt);
+    // for(let i = 0; i < n; i++) {
+    //   let x = parseInt(h_spline.get_position(i)[0]);
+    //   let y = parseInt(h_spline.get_position(i)[1]);
+    //   let z = parseInt(h_spline.get_position(i)[2]);
 
-      this.curve_fn =
-      (t) => vec3(
-          x1 + t * (x2 - x1),
-          y1 + t * (y2 - y1),
-          z1 + t * (z2 - z1),
-      );
+      this.curve_fn = (t) => h_spline.get_position(t);
+
+      // console.log(this.curve_fn);
       this.curve = new Curve_Shape(this.curve_fn, 100);
+      // console.log(this.curve);
       // this.curves.push(this.curve);
-    }
+    // }
+    // this.curve = new Curve_Shape(
+    //   (t) => this.spline.get_position(t),
+    //   100,
+    //   color(1, 0, 0, 1),
+    // );
   }
 
   load_spline() {
